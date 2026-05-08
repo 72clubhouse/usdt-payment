@@ -23,16 +23,21 @@ body { font-family: -apple-system, sans-serif; background: #f5f5f5; }
 .input-wrap { position: relative; flex: 1; }
 .input-wrap input { width: 100%; padding: 10px 36px 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
 .input-wrap span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 13px; }
-.arrow { color: #aaa; font-size: 18px; }
+.network-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+.network-btn { padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; cursor: pointer; text-align: left; }
+.network-btn.active { border-color: #06C755; background: #f0fff4; }
+.network-btn .net-name { font-size: 14px; font-weight: bold; color: #333; }
+.network-btn .net-detail { font-size: 12px; color: #888; margin-top: 2px; }
+.network-btn .net-spread { font-size: 12px; color: #06C755; float: right; }
 .summary { background: #f9f9f9; border-radius: 8px; padding: 12px; margin-top: 12px; display: none; }
 .summary-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
 .summary-row.total { border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; font-weight: bold; }
 .summary-row.total span:last-child { color: #06C755; }
-.qr-card { text-align: center; display: none; }
-.qr-card h2 { font-size: 18px; color: #06C755; margin-bottom: 4px; }
-.qr-card p { font-size: 13px; color: #888; margin-bottom: 16px; }
+.qr-section { text-align: center; display: none; }
+.qr-section h2 { font-size: 20px; color: #06C755; margin-bottom: 4px; }
+.qr-section p { font-size: 13px; color: #888; margin-bottom: 16px; }
 #qrcode { display: inline-block; margin-bottom: 16px; }
-.wallet-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.wallet-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; text-align: left; }
 .wallet-label { font-size: 12px; color: #888; margin-bottom: 4px; }
 .wallet-addr { font-size: 11px; color: #333; word-break: break-all; }
 .network-warn { color: #ff5555; font-size: 12px; margin-bottom: 12px; }
@@ -44,15 +49,12 @@ body { font-family: -apple-system, sans-serif; background: #f5f5f5; }
 </style>
 </head>
 <body>
-
 <div class="header">
   <h1>ชำระเงิน USDT</h1>
-  <p id="rate-text">กำลังโหลดอัตราแลกเปลี่ยน...</p>
+  <p id="rate-text">กำลังโหลด...</p>
 </div>
-
 <div class="container">
 
-  <!-- หน้ากรอกจำนวนเงิน -->
   <div id="page-amount">
     <div class="card">
       <h2>เลือกจำนวนเงิน (บาท)</h2>
@@ -70,98 +72,145 @@ body { font-family: -apple-system, sans-serif; background: #f5f5f5; }
           <input type="number" id="input-thb" placeholder="บาท" oninput="onInput('thb')">
           <span>฿</span>
         </div>
-        <div class="arrow">⇄</div>
+        <div style="color:#aaa;font-size:18px;">⇄</div>
         <div class="input-wrap">
           <input type="number" id="input-usdt" placeholder="USDT" oninput="onInput('usdt')">
           <span>U</span>
         </div>
       </div>
-      <div class="summary" id="summary">
-        <div class="summary-row"><span>จำนวนเงิน</span><span id="s-thb">-</span></div>
-        <div class="summary-row"><span>อัตราแลกเปลี่ยน</span><span id="s-rate">-</span></div>
-        <div class="summary-row total"><span>รวม USDT</span><span id="s-usdt">-</span></div>
-      </div>
-      <p class="error" id="error-msg">กรุณาระบุจำนวนเงิน (ขั้นต่ำ 100 บาท)</p>
     </div>
+
+    <div class="card">
+      <h2>เลือก Network</h2>
+      <div class="network-grid" id="network-grid"></div>
+    </div>
+
+    <div class="summary" id="summary">
+      <div class="summary-row"><span>จำนวนเงิน</span><span id="s-thb">-</span></div>
+      <div class="summary-row"><span>Network</span><span id="s-network">-</span></div>
+      <div class="summary-row"><span>Spread</span><span id="s-spread">-</span></div>
+      <div class="summary-row"><span>อัตรา</span><span id="s-rate">-</span></div>
+      <div class="summary-row total"><span>รวม USDT</span><span id="s-usdt">-</span></div>
+    </div>
+    <p class="error" id="error-msg">กรุณาระบุจำนวนเงินและเลือก Network</p>
     <button class="btn-confirm" id="btn-confirm" onclick="showQR()">ดู QR สำหรับชำระเงิน</button>
   </div>
 
-  <!-- หน้า QR -->
-  <div id="page-qr">
-    <div class="card qr-card" id="qr-card">
+  <div id="page-qr" style="display:none;">
+    <div class="card qr-section" id="qr-card" style="display:block;">
       <h2 id="qr-usdt">0 USDT</h2>
       <p id="qr-thb">= 0 THB</p>
       <div id="qrcode"></div>
       <div class="wallet-box">
-        <div class="wallet-label">Network: TRC-20 (TRON)</div>
-        <div class="wallet-addr" id="wallet-addr">-</div>
+        <div class="wallet-label" id="qr-network">-</div>
+        <div class="wallet-addr" id="qr-wallet">-</div>
       </div>
-      <p class="network-warn">⚠️ TRC-20 เท่านั้น — ผิด network = เสียเงิน</p>
+      <p class="network-warn" id="qr-warn">-</p>
       <button class="btn-copy" onclick="copyAddress()">คัดลอก Address</button>
       <button class="btn-back" onclick="goBack()">กลับ</button>
     </div>
   </div>
 
 </div>
-
 <script>
-const SPREAD = 0.03;
-let ourRate = 32.01;
-let selectedThb = 0;
-let walletAddress = '';
+var mktRate = 33;
+var ratesData = {};
+var selectedThb = 0;
+var selectedNetwork = '';
 
 async function init() {
   try {
     await liff.init({ liffId: '2010018986-l6xlmcbu' });
   } catch(e) {}
-
   try {
-    const res = await fetch('https://usdt-payment-q54z.onrender.com/rate');
-    const data = await res.json();
-    ourRate = data.ourRate;
-    walletAddress = data.wallet;
-    document.getElementById('rate-text').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' THB (รวม spread 3%)';
+    var res = await fetch('https://usdt-payment-q54z.onrender.com/rate');
+    var data = await res.json();
+    mktRate = data.mktRate;
+    ratesData = data.rates;
+    document.getElementById('rate-text').textContent = 'อัตราตลาด 1 USDT = ' + mktRate.toFixed(2) + ' THB';
+    buildNetworkGrid();
   } catch(e) {
-    document.getElementById('rate-text').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' THB (รวม spread 3%)';
+    document.getElementById('rate-text').textContent = '1 USDT = ' + mktRate.toFixed(2) + ' THB';
+    buildNetworkGrid();
   }
+}
+
+function buildNetworkGrid() {
+  var grid = document.getElementById('network-grid');
+  grid.innerHTML = '';
+  var keys = Object.keys(ratesData);
+  if (keys.length === 0) {
+    keys = ['trc20', 'bep20', 'polygon'];
+    ratesData = {
+      trc20: { name: 'TRC-20', chain: 'TRON', spread: 0.03, ourRate: mktRate * 0.96, wallet: '', warning: 'TRC-20 only' },
+      bep20: { name: 'BEP-20', chain: 'BNB Smart Chain', spread: 0.03, ourRate: mktRate * 0.97, wallet: '', warning: 'BEP-20 only' },
+      polygon: { name: 'Polygon', chain: 'Polygon Network', spread: 0.03, ourRate: mktRate * 0.97, wallet: '', warning: 'Polygon only' },
+    };
+  }
+  keys.forEach(function(key) {
+    var net = ratesData[key];
+    var btn = document.createElement('button');
+    btn.className = 'network-btn';
+    btn.id = 'net-' + key;
+    btn.onclick = function() { selectNetwork(key); };
+    btn.innerHTML = '<span class="net-spread">spread ' + (net.spread * 100) + '%</span>' +
+      '<div class="net-name">' + net.name + '</div>' +
+      '<div class="net-detail">' + net.chain + ' · 1 USDT = ' + net.ourRate.toFixed(2) + ' THB</div>';
+    grid.appendChild(btn);
+  });
 }
 
 function selectPreset(thb) {
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
   event.target.classList.add('active');
   selectedThb = thb;
   document.getElementById('input-thb').value = thb;
-  document.getElementById('input-usdt').value = (thb / ourRate).toFixed(4);
-  updateSummary(thb);
+  updateUSDT();
+  updateSummary();
 }
 
 function onInput(from) {
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  selectedThb = 0;
-  const thbEl = document.getElementById('input-thb');
-  const usdtEl = document.getElementById('input-usdt');
-  let thb = 0;
+  document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
   if (from === 'thb') {
-    thb = parseFloat(thbEl.value) || 0;
-    usdtEl.value = thb > 0 ? (thb / ourRate).toFixed(4) : '';
+    selectedThb = parseFloat(document.getElementById('input-thb').value) || 0;
+    updateUSDT();
   } else {
-    const usdt = parseFloat(usdtEl.value) || 0;
-    thb = usdt * ourRate;
-    thbEl.value = usdt > 0 ? thb.toFixed(2) : '';
+    var usdt = parseFloat(document.getElementById('input-usdt').value) || 0;
+    var rate = selectedNetwork && ratesData[selectedNetwork] ? ratesData[selectedNetwork].ourRate : mktRate;
+    selectedThb = usdt * rate;
+    document.getElementById('input-thb').value = selectedThb > 0 ? selectedThb.toFixed(2) : '';
   }
-  updateSummary(thb);
+  updateSummary();
 }
 
-function updateSummary(thb) {
-  const summary = document.getElementById('summary');
-  const btn = document.getElementById('btn-confirm');
-  if (thb >= 100) {
+function updateUSDT() {
+  if (selectedThb > 0 && selectedNetwork && ratesData[selectedNetwork]) {
+    document.getElementById('input-usdt').value = (selectedThb / ratesData[selectedNetwork].ourRate).toFixed(4);
+  }
+}
+
+function selectNetwork(key) {
+  selectedNetwork = key;
+  document.querySelectorAll('.network-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('net-' + key);
+  if (btn) btn.classList.add('active');
+  updateUSDT();
+  updateSummary();
+}
+
+function updateSummary() {
+  var summary = document.getElementById('summary');
+  var btn = document.getElementById('btn-confirm');
+  if (selectedThb >= 100 && selectedNetwork && ratesData[selectedNetwork]) {
+    var net = ratesData[selectedNetwork];
+    var usdt = (selectedThb / net.ourRate).toFixed(4);
     summary.style.display = 'block';
-    document.getElementById('s-thb').textContent = thb.toLocaleString('th-TH', {minimumFractionDigits:2}) + ' ฿';
-    document.getElementById('s-rate').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' ฿';
-    document.getElementById('s-usdt').textContent = (thb / ourRate).toFixed(4) + ' USDT';
+    document.getElementById('s-thb').textContent = selectedThb.toLocaleString('th-TH', {minimumFractionDigits:2}) + ' THB';
+    document.getElementById('s-network').textContent = net.name + ' (' + net.chain + ')';
+    document.getElementById('s-spread').textContent = (net.spread * 100) + '%';
+    document.getElementById('s-rate').textContent = '1 USDT = ' + net.ourRate.toFixed(2) + ' THB';
+    document.getElementById('s-usdt').textContent = usdt + ' USDT';
     btn.classList.add('active');
-    selectedThb = thb;
   } else {
     summary.style.display = 'none';
     btn.classList.remove('active');
@@ -169,34 +218,29 @@ function updateSummary(thb) {
 }
 
 function showQR() {
-  const thb = parseFloat(document.getElementById('input-thb').value) || 0;
-  if (thb < 100) {
+  if (selectedThb < 100 || !selectedNetwork || !ratesData[selectedNetwork]) {
     document.getElementById('error-msg').style.display = 'block';
     return;
   }
   document.getElementById('error-msg').style.display = 'none';
-  const usdt = (thb / ourRate).toFixed(4);
+  var net = ratesData[selectedNetwork];
+  var usdt = (selectedThb / net.ourRate).toFixed(4);
 
   document.getElementById('page-amount').style.display = 'none';
   document.getElementById('page-qr').style.display = 'block';
-  document.getElementById('qr-card').style.display = 'block';
   document.getElementById('qr-usdt').textContent = usdt + ' USDT';
-  document.getElementById('qr-thb').textContent = '= ' + thb.toLocaleString('th-TH') + ' THB';
-  document.getElementById('wallet-addr').textContent = walletAddress || 'YOUR_TRC20_WALLET';
+  document.getElementById('qr-thb').textContent = '= ' + selectedThb.toLocaleString('th-TH') + ' THB';
+  document.getElementById('qr-network').textContent = 'Network: ' + net.name + ' (' + net.chain + ')';
+  document.getElementById('qr-wallet').textContent = net.wallet;
+  document.getElementById('qr-warn').textContent = net.warning;
 
   document.getElementById('qrcode').innerHTML = '';
-  new QRCode(document.getElementById('qrcode'), {
-    text: walletAddress || 'YOUR_TRC20_WALLET',
-    width: 200,
-    height: 200,
-  });
+  new QRCode(document.getElementById('qrcode'), { text: net.wallet, width: 200, height: 200 });
 }
 
 function copyAddress() {
-  const addr = document.getElementById('wallet-addr').textContent;
-  navigator.clipboard.writeText(addr).then(() => {
-    alert('คัดลอก Address แล้ว!');
-  });
+  var addr = document.getElementById('qr-wallet').textContent;
+  navigator.clipboard.writeText(addr).then(function() { alert('คัดลอก Address แล้ว!'); });
 }
 
 function goBack() {
