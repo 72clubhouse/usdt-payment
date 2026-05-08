@@ -11,16 +11,9 @@ const config = {
 
 const client = new line.Client(config);
 
-// Wallet addresses
-const WALLETS = {
-  'TRC-20': process.env.WALLET_TRC20 || 'YOUR_TRC20_WALLET',
-  'ERC-20': process.env.WALLET_ERC20 || 'YOUR_ERC20_WALLET',
-  'BEP-20': process.env.WALLET_BEP20 || 'YOUR_BEP20_WALLET',
-};
+const WALLET_TRC20 = process.env.WALLET_TRC20 || 'YOUR_TRC20_WALLET';
+const SPREAD = 0.03;
 
-const SPREAD = 0.03; // 3% spread
-
-// Get USDT rate from Binance (realtime)
 async function getRate() {
   try {
     const res = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB');
@@ -28,68 +21,71 @@ async function getRate() {
     const ourRate = mktRate * (1 - SPREAD);
     return { mktRate, ourRate };
   } catch {
-    // Fallback rate if API fails
     return { mktRate: 33, ourRate: 33 * (1 - SPREAD) };
   }
 }
 
-// Webhook endpoint
 app.post('/webhook', line.middleware(config), async (req, res) => {
   res.json({ status: 'ok' });
   const events = req.body.events;
   for (const event of events) {
-    if (event.type === 'message' && event.message.text) {
-      const text = event.message.text.toLowerCase();
-      if (text.includes('ชำระ') || text.includes('จ่าย') || text.includes('pay')) {
-        await sendPaymentButton(event.replyToken);
+    try {
+      if (event.type === 'message' && event.message.text) {
+        const text = event.message.text.toLowerCase();
+        if (text.includes('usdt_pay')) {
+          await sendPaymentButton(event.replyToken);
+        }
+      } else if (event.type === 'postback') {
+        const data = new URLSearchParams(event.postback.data);
+        const action = data.get('action');
+        if (action === 'select_amount') {
+          const thb = parseInt(data.get('thb'));
+          await sendQRCode(event.replyToken, thb);
+        }
       }
-    } else if (event.type === 'postback') {
-      const data = new URLSearchParams(event.postback.data);
-      const action = data.get('action');
-      if (action === 'select_amount') {
-        const thb = parseInt(data.get('thb'));
-        await sendQRCode(event.replyToken, thb, event.source.userId);
-      }
+    } catch (err) {
+      console.error('Event error:', err.message);
     }
   }
 });
 
-// Send payment amount selection
 async function sendPaymentButton(replyToken) {
   const { ourRate } = await getRate();
   const presets = [100, 200, 500, 1000, 2000, 5000];
 
   const message = {
     type: 'flex',
-    altText: 'เลือกจำนวนเงินที่ต้องการชำระ',
+    altText: 'เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเธณเธฃเธฐ',
     contents: {
       type: 'bubble',
       header: {
-        type: 'box', layout: 'vertical',
+        type: 'box',
+        layout: 'vertical',
         backgroundColor: '#06C755',
-        contents: [{
-          type: 'text', text: 'ชำระเงิน USDT',
-          color: '#ffffff', size: 'xl', weight: 'bold'
-        }, {
-          type: 'text',
-          text: `1 USDT = ${ourRate.toFixed(2)} THB (รวม spread 3%)`,
-          color: '#ddffdd', size: 'xs'
-        }]
+        contents: [
+          { type: 'text', text: 'USDT Payment', color: '#ffffff', size: 'xl', weight: 'bold' },
+          { type: 'text', text: `Rate: 1 USDT = ${ourRate.toFixed(2)} THB`, color: '#ddffdd', size: 'xs' }
+        ]
       },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
         contents: [
-          { type: 'text', text: 'เลือกจำนวนเงิน (บาท)', weight: 'bold', size: 'sm' },
+          { type: 'text', text: 'Select Amount (THB)', weight: 'bold', size: 'sm', color: '#555555' },
           {
-            type: 'box', layout: 'vertical', spacing: 'xs',
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'xs',
             contents: presets.map(thb => ({
               type: 'button',
               action: {
                 type: 'postback',
-                label: `${thb.toLocaleString()} ฿  ≈ ${(thb / ourRate).toFixed(4)} USDT`,
+                label: `${thb.toLocaleString()} THB โ ${(thb / ourRate).toFixed(4)} USDT`,
                 data: `action=select_amount&thb=${thb}`
               },
-              style: 'secondary', height: 'sm'
+              style: 'secondary',
+              height: 'sm'
             }))
           }
         ]
@@ -99,37 +95,47 @@ async function sendPaymentButton(replyToken) {
   await client.replyMessage(replyToken, message);
 }
 
-// Send QR Code page
-async function sendQRCode(replyToken, thb, userId) {
+async function sendQRCode(replyToken, thb) {
   const { ourRate } = await getRate();
   const usdt = (thb / ourRate).toFixed(4);
-  const addr = WALLETS['TRC-20'];
 
   const message = {
     type: 'flex',
-    altText: `ชำระ ${usdt} USDT`,
+    altText: `Pay ${usdt} USDT`,
     contents: {
       type: 'bubble',
-      body: {
-        type: 'box', layout: 'vertical', spacing: 'md',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#111111',
         contents: [
-          { type: 'text', text: 'สแกน QR ชำระเงิน', weight: 'bold', size: 'lg' },
-          { type: 'text', text: `${usdt} USDT`, size: 'xxl', weight: 'bold', color: '#06C755' },
-          { type: 'text', text: `≈ ${thb.toLocaleString()} THB`, size: 'sm', color: '#888888' },
+          { type: 'text', text: 'Scan to Pay', color: '#ffffff', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'USDT Payment', color: '#888888', size: 'xs' }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: `${usdt} USDT`, size: 'xxl', weight: 'bold', color: '#06C755', align: 'center' },
+          { type: 'text', text: `โ ${thb.toLocaleString()} THB`, size: 'sm', color: '#888888', align: 'center' },
           { type: 'separator' },
           { type: 'text', text: 'Network: TRC-20 (TRON)', size: 'sm', weight: 'bold' },
-          { type: 'text', text: addr, size: 'xxs', color: '#555555', wrap: true },
+          { type: 'text', text: WALLET_TRC20, size: 'xxs', color: '#555555', wrap: true },
           { type: 'separator' },
-          { type: 'text', text: '⚠ โอนเฉพาะ TRC-20 เท่านั้น', size: 'xs', color: '#ff5555', wrap: true },
-          { type: 'text', text: 'ระบบจะแจ้งเตือนอัตโนมัติเมื่อได้รับเงิน', size: 'xs', color: '#888888' }
+          { type: 'text', text: 'TRC-20 only โ€” wrong network = lost funds', size: 'xs', color: '#ff5555', wrap: true },
+          { type: 'text', text: 'You will be notified when payment is received', size: 'xs', color: '#888888', wrap: true }
         ]
       },
       footer: {
-        type: 'box', layout: 'vertical',
+        type: 'box',
+        layout: 'vertical',
         contents: [{
           type: 'button',
-          action: { type: 'clipboard', label: 'คัดลอก Address', clipboardText: addr },
-          style: 'primary', color: '#06C755'
+          action: { type: 'clipboard', label: 'Copy Address', clipboardText: WALLET_TRC20 },
+          style: 'primary',
+          color: '#06C755'
         }]
       }
     }
@@ -137,7 +143,6 @@ async function sendQRCode(replyToken, thb, userId) {
   await client.replyMessage(replyToken, message);
 }
 
-// Health check
 app.get('/', (req, res) => res.json({ status: 'USDT Payment Server running' }));
 
 const PORT = process.env.PORT || 10000;
