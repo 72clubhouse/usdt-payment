@@ -158,7 +158,7 @@ async function sendPaymentButton(replyToken) {
             type: 'button',
             action: {
               type: 'postback',
-              label: 'โ๏ธ เธฃเธฐเธเธธเธเธณเธเธงเธเน€เธญเธ',
+              label: 'เธฃเธฐเธเธธเธเธณเธเธงเธเน€เธเธดเธเน€เธญเธ',
               data: 'action=custom_amount'
             },
             style: 'primary',
