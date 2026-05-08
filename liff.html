@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USDT Payment</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #f5f5f5; }
+.header { background: #06C755; padding: 16px; text-align: center; }
+.header h1 { color: #fff; font-size: 20px; }
+.header p { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 4px; }
+.container { padding: 16px; max-width: 480px; margin: 0 auto; }
+.card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+.card h2 { font-size: 14px; color: #555; margin-bottom: 12px; }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.preset-btn { padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; cursor: pointer; font-size: 13px; text-align: center; }
+.preset-btn.active { background: #06C755; color: #fff; border-color: #06C755; }
+.divider { text-align: center; color: #aaa; font-size: 13px; margin: 12px 0; }
+.input-row { display: flex; gap: 8px; align-items: center; }
+.input-wrap { position: relative; flex: 1; }
+.input-wrap input { width: 100%; padding: 10px 36px 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.input-wrap span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 13px; }
+.arrow { color: #aaa; font-size: 18px; }
+.summary { background: #f9f9f9; border-radius: 8px; padding: 12px; margin-top: 12px; display: none; }
+.summary-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.summary-row.total { border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; font-weight: bold; }
+.summary-row.total span:last-child { color: #06C755; }
+.qr-card { text-align: center; display: none; }
+.qr-card h2 { font-size: 18px; color: #06C755; margin-bottom: 4px; }
+.qr-card p { font-size: 13px; color: #888; margin-bottom: 16px; }
+#qrcode { display: inline-block; margin-bottom: 16px; }
+.wallet-box { background: #f5f5f5; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.wallet-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.wallet-addr { font-size: 11px; color: #333; word-break: break-all; }
+.network-warn { color: #ff5555; font-size: 12px; margin-bottom: 12px; }
+.btn-confirm { width: 100%; padding: 14px; background: #06C755; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; opacity: 0.5; pointer-events: none; }
+.btn-confirm.active { opacity: 1; pointer-events: auto; }
+.btn-copy { width: 100%; padding: 12px; background: #111; color: #fff; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; margin-bottom: 8px; }
+.btn-back { width: 100%; padding: 12px; background: #f5f5f5; color: #333; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; }
+.error { color: #ff5555; font-size: 12px; text-align: center; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>ชำระเงิน USDT</h1>
+  <p id="rate-text">กำลังโหลดอัตราแลกเปลี่ยน...</p>
+</div>
+
+<div class="container">
+
+  <!-- หน้ากรอกจำนวนเงิน -->
+  <div id="page-amount">
+    <div class="card">
+      <h2>เลือกจำนวนเงิน (บาท)</h2>
+      <div class="preset-grid">
+        <button class="preset-btn" onclick="selectPreset(100)">100 THB</button>
+        <button class="preset-btn" onclick="selectPreset(200)">200 THB</button>
+        <button class="preset-btn" onclick="selectPreset(500)">500 THB</button>
+        <button class="preset-btn" onclick="selectPreset(1000)">1,000 THB</button>
+        <button class="preset-btn" onclick="selectPreset(2000)">2,000 THB</button>
+        <button class="preset-btn" onclick="selectPreset(5000)">5,000 THB</button>
+      </div>
+      <div class="divider">หรือระบุจำนวนเอง</div>
+      <div class="input-row">
+        <div class="input-wrap">
+          <input type="number" id="input-thb" placeholder="บาท" oninput="onInput('thb')">
+          <span>฿</span>
+        </div>
+        <div class="arrow">⇄</div>
+        <div class="input-wrap">
+          <input type="number" id="input-usdt" placeholder="USDT" oninput="onInput('usdt')">
+          <span>U</span>
+        </div>
+      </div>
+      <div class="summary" id="summary">
+        <div class="summary-row"><span>จำนวนเงิน</span><span id="s-thb">-</span></div>
+        <div class="summary-row"><span>อัตราแลกเปลี่ยน</span><span id="s-rate">-</span></div>
+        <div class="summary-row total"><span>รวม USDT</span><span id="s-usdt">-</span></div>
+      </div>
+      <p class="error" id="error-msg">กรุณาระบุจำนวนเงิน (ขั้นต่ำ 100 บาท)</p>
+    </div>
+    <button class="btn-confirm" id="btn-confirm" onclick="showQR()">ดู QR สำหรับชำระเงิน</button>
+  </div>
+
+  <!-- หน้า QR -->
+  <div id="page-qr">
+    <div class="card qr-card" id="qr-card">
+      <h2 id="qr-usdt">0 USDT</h2>
+      <p id="qr-thb">= 0 THB</p>
+      <div id="qrcode"></div>
+      <div class="wallet-box">
+        <div class="wallet-label">Network: TRC-20 (TRON)</div>
+        <div class="wallet-addr" id="wallet-addr">-</div>
+      </div>
+      <p class="network-warn">⚠️ TRC-20 เท่านั้น — ผิด network = เสียเงิน</p>
+      <button class="btn-copy" onclick="copyAddress()">คัดลอก Address</button>
+      <button class="btn-back" onclick="goBack()">กลับ</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SPREAD = 0.03;
+let ourRate = 32.01;
+let selectedThb = 0;
+let walletAddress = '';
+
+async function init() {
+  try {
+    await liff.init({ liffId: '2010018986-l6xlmcbu' });
+  } catch(e) {}
+
+  try {
+    const res = await fetch('https://usdt-payment-q54z.onrender.com/rate');
+    const data = await res.json();
+    ourRate = data.ourRate;
+    walletAddress = data.wallet;
+    document.getElementById('rate-text').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' THB (รวม spread 3%)';
+  } catch(e) {
+    document.getElementById('rate-text').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' THB (รวม spread 3%)';
+  }
+}
+
+function selectPreset(thb) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  selectedThb = thb;
+  document.getElementById('input-thb').value = thb;
+  document.getElementById('input-usdt').value = (thb / ourRate).toFixed(4);
+  updateSummary(thb);
+}
+
+function onInput(from) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  selectedThb = 0;
+  const thbEl = document.getElementById('input-thb');
+  const usdtEl = document.getElementById('input-usdt');
+  let thb = 0;
+  if (from === 'thb') {
+    thb = parseFloat(thbEl.value) || 0;
+    usdtEl.value = thb > 0 ? (thb / ourRate).toFixed(4) : '';
+  } else {
+    const usdt = parseFloat(usdtEl.value) || 0;
+    thb = usdt * ourRate;
+    thbEl.value = usdt > 0 ? thb.toFixed(2) : '';
+  }
+  updateSummary(thb);
+}
+
+function updateSummary(thb) {
+  const summary = document.getElementById('summary');
+  const btn = document.getElementById('btn-confirm');
+  if (thb >= 100) {
+    summary.style.display = 'block';
+    document.getElementById('s-thb').textContent = thb.toLocaleString('th-TH', {minimumFractionDigits:2}) + ' ฿';
+    document.getElementById('s-rate').textContent = '1 USDT = ' + ourRate.toFixed(2) + ' ฿';
+    document.getElementById('s-usdt').textContent = (thb / ourRate).toFixed(4) + ' USDT';
+    btn.classList.add('active');
+    selectedThb = thb;
+  } else {
+    summary.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+function showQR() {
+  const thb = parseFloat(document.getElementById('input-thb').value) || 0;
+  if (thb < 100) {
+    document.getElementById('error-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('error-msg').style.display = 'none';
+  const usdt = (thb / ourRate).toFixed(4);
+
+  document.getElementById('page-amount').style.display = 'none';
+  document.getElementById('page-qr').style.display = 'block';
+  document.getElementById('qr-card').style.display = 'block';
+  document.getElementById('qr-usdt').textContent = usdt + ' USDT';
+  document.getElementById('qr-thb').textContent = '= ' + thb.toLocaleString('th-TH') + ' THB';
+  document.getElementById('wallet-addr').textContent = walletAddress || 'YOUR_TRC20_WALLET';
+
+  document.getElementById('qrcode').innerHTML = '';
+  new QRCode(document.getElementById('qrcode'), {
+    text: walletAddress || 'YOUR_TRC20_WALLET',
+    width: 200,
+    height: 200,
+  });
+}
+
+function copyAddress() {
+  const addr = document.getElementById('wallet-addr').textContent;
+  navigator.clipboard.writeText(addr).then(() => {
+    alert('คัดลอก Address แล้ว!');
+  });
+}
+
+function goBack() {
+  document.getElementById('page-qr').style.display = 'none';
+  document.getElementById('page-amount').style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>
