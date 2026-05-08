@@ -85,7 +85,7 @@ async function sendPaymentButton(replyToken) {
             action: {
               type: 'uri',
               label: 'Enter custom amount',
-              uri: 'https://liff.line.me/' + LIFF_ID,
+              uri: 'https://usdt-payment-q54z.onrender.com/liff',
             },
             style: 'primary',
             color: '#111111',
