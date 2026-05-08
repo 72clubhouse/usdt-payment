@@ -117,7 +117,7 @@ async function sendPaymentButton(replyToken) {
                 type: 'button',
                 action: {
                   type: 'postback',
-                  label: 'โ๏ธ Enter custom amount',
+                  label: 'Enter custom amount',
                   data: 'action=custom_amount'
                 },
                 style: 'primary',
