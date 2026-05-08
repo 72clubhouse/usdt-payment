@@ -13,21 +13,9 @@ const client = new line.Client(config);
 
 const WALLET_TRC20 = process.env.WALLET_TRC20 || 'YOUR_TRC20_WALLET';
 const SPREAD = 0.03;
-const MIN_THB = 100;
-const WAITING_TIMEOUT_MS = 5 * 60 * 1000; // 5 เธเธฒเธ—เธต
 
-// เน€เธเนเธ state เธเธฃเนเธญเธก timestamp เน€เธเธทเนเธญเธ—เธณ timeout
+// เน€เธเนเธ state เธเธญเธเธฅเธนเธเธเนเธฒเธ—เธตเนเธฃเธญเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธ
 const waitingForAmount = {};
-
-// เธฅเธ state เธ—เธตเนเธซเธกเธ”เธญเธฒเธขเธธเธ—เธธเธ 1 เธเธฒเธ—เธต
-setInterval(() => {
-  const now = Date.now();
-  for (const userId in waitingForAmount) {
-    if (now - waitingForAmount[userId].timestamp > WAITING_TIMEOUT_MS) {
-      delete waitingForAmount[userId];
-    }
-  }
-}, 60 * 1000);
 
 async function getRate() {
   try {
@@ -45,45 +33,25 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
   const events = req.body.events;
   for (const event of events) {
     try {
-      if (event.type === 'message' && event.message.type === 'text') {
+      if (event.type === 'message' && event.message.text) {
+        const text = event.message.text.toLowerCase();
         const userId = event.source.userId;
-        const rawText = event.message.text.trim();
-        const text = rawText.toLowerCase();
 
         // เธ–เนเธฒเธฅเธนเธเธเนเธฒเธเธณเธฅเธฑเธเธฃเธญเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธ
         if (waitingForAmount[userId]) {
-          // เธ•เธฃเธงเธเธชเธญเธ timeout เธเนเธญเธ
-          const elapsed = Date.now() - waitingForAmount[userId].timestamp;
-          if (elapsed > WAITING_TIMEOUT_MS) {
-            delete waitingForAmount[userId];
-            await client.replyMessage(event.replyToken, {
-              type: 'text',
-              text: 'เธซเธกเธ”เน€เธงเธฅเธฒเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธเนเธฅเนเธง เธเธฃเธธเธ“เธฒเน€เธฃเธดเนเธกเนเธซเธกเนเธญเธตเธเธเธฃเธฑเนเธ'
-            });
-            continue;
-          }
-
-          // เนเธเธฅเธเธ•เธฑเธงเน€เธฅเธ เธฃเธญเธเธฃเธฑเธเธ—เธฑเนเธ comma เนเธฅเธฐ dot
-          const amount = parseFloat(rawText.replace(/,/g, ''));
-
-          if (!isNaN(amount) && amount >= MIN_THB) {
+          const amount = parseFloat(event.message.text.replace(/,/g, ''));
+          if (!isNaN(amount) && amount >= 100) {
             delete waitingForAmount[userId];
             await sendQRCode(event.replyToken, amount);
           } else {
-            // เนเธเนเธ error เนเธ•เนเธขเธฑเธเธเธ state เนเธงเนเนเธซเนเธเธฃเธญเธเนเธซเธกเนเนเธ”เน
             await client.replyMessage(event.replyToken, {
               type: 'text',
-              text: `เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธเน€เธเนเธเธ•เธฑเธงเน€เธฅเธ (เธเธฑเนเธเธ•เนเธณ ${MIN_THB.toLocaleString()} THB)\nเน€เธเนเธ 750 เธซเธฃเธทเธญ 1,500`
+              text: 'เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธเน€เธเนเธเธ•เธฑเธงเน€เธฅเธ (เธเธฑเนเธเธ•เนเธณ 100 THB) เน€เธเนเธ 750'
             });
           }
-          continue;
-        }
-
-        // เธเธณเธชเธฑเนเธเธเธเธ•เธด
-        if (text.includes('usdt_pay')) {
+        } else if (text.includes('usdt_pay')) {
           await sendPaymentButton(event.replyToken);
         }
-
       } else if (event.type === 'postback') {
         const data = new URLSearchParams(event.postback.data);
         const action = data.get('action');
@@ -91,15 +59,12 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
         if (action === 'select_amount') {
           const thb = parseInt(data.get('thb'));
-          if (!isNaN(thb) && thb >= MIN_THB) {
-            await sendQRCode(event.replyToken, thb);
-          }
+          await sendQRCode(event.replyToken, thb);
         } else if (action === 'custom_amount') {
-          // เธเธฑเธเธ—เธถเธ state เธเธฃเนเธญเธก timestamp
-          waitingForAmount[userId] = { timestamp: Date.now() };
+          waitingForAmount[userId] = true;
           await client.replyMessage(event.replyToken, {
             type: 'text',
-            text: `เธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃ (THB)\nเน€เธเนเธ 750\n\n(เธเธฑเนเธเธ•เนเธณ ${MIN_THB.toLocaleString()} THB ยท เธซเธกเธ”เน€เธงเธฅเธฒเนเธ 5 เธเธฒเธ—เธต)`
+            text: 'เธเธดเธกเธเนเธเธณเธเธงเธเน€เธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃ (THB) เน€เธเนเธ 750\n\n(เธเธฑเนเธเธ•เนเธณ 100 THB)'
           });
         }
       }
@@ -115,7 +80,7 @@ async function sendPaymentButton(replyToken) {
 
   const message = {
     type: 'flex',
-    altText: 'เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธ',
+    altText: 'Select payment amount',
     contents: {
       type: 'bubble',
       header: {
@@ -123,8 +88,8 @@ async function sendPaymentButton(replyToken) {
         layout: 'vertical',
         backgroundColor: '#06C755',
         contents: [
-          { type: 'text', text: 'เธเธณเธฃเธฐเน€เธเธดเธ USDT', color: '#ffffff', size: 'xl', weight: 'bold' },
-          { type: 'text', text: `1 USDT = ${ourRate.toFixed(2)} THB (เธฃเธงเธก spread 3%)`, color: '#ddffdd', size: 'xs' }
+          { type: 'text', text: 'USDT Payment', color: '#ffffff', size: 'xl', weight: 'bold' },
+          { type: 'text', text: `Rate: 1 USDT = ${ourRate.toFixed(2)} THB`, color: '#ddffdd', size: 'xs' }
         ]
       },
       body: {
@@ -132,38 +97,34 @@ async function sendPaymentButton(replyToken) {
         layout: 'vertical',
         spacing: 'sm',
         contents: [
-          { type: 'text', text: 'เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธ (เธเธฒเธ—)', weight: 'bold', size: 'sm', color: '#555555' },
+          { type: 'text', text: 'Select Amount (THB)', weight: 'bold', size: 'sm', color: '#555555' },
           {
             type: 'box',
             layout: 'vertical',
             spacing: 'xs',
-            contents: presets.map(thb => ({
-              type: 'button',
-              action: {
-                type: 'postback',
-                label: `${thb.toLocaleString()} เธฟ  โ  ${(thb / ourRate).toFixed(4)} USDT`,
-                data: `action=select_amount&thb=${thb}`
-              },
-              style: 'secondary',
-              height: 'sm'
-            }))
-          }
-        ]
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'button',
-            action: {
-              type: 'postback',
-              label: 'โ๏ธ เธฃเธฐเธเธธเธเธณเธเธงเธเน€เธญเธ',
-              data: 'action=custom_amount'
-            },
-            style: 'primary',
-            color: '#111111',
-            height: 'sm'
+            contents: [
+              ...presets.map(thb => ({
+                type: 'button',
+                action: {
+                  type: 'postback',
+                  label: `${thb.toLocaleString()} THB โ ${(thb / ourRate).toFixed(4)} USDT`,
+                  data: `action=select_amount&thb=${thb}`
+                },
+                style: 'secondary',
+                height: 'sm'
+              })),
+              {
+                type: 'button',
+                action: {
+                  type: 'postback',
+                  label: 'โ๏ธ Enter custom amount',
+                  data: 'action=custom_amount'
+                },
+                style: 'primary',
+                color: '#111111',
+                height: 'sm'
+              }
+            ]
           }
         ]
       }
@@ -178,7 +139,7 @@ async function sendQRCode(replyToken, thb) {
 
   const message = {
     type: 'flex',
-    altText: `เธเธณเธฃเธฐ ${usdt} USDT`,
+    altText: `Pay ${usdt} USDT`,
     contents: {
       type: 'bubble',
       header: {
@@ -186,7 +147,7 @@ async function sendQRCode(replyToken, thb) {
         layout: 'vertical',
         backgroundColor: '#111111',
         contents: [
-          { type: 'text', text: 'เธชเนเธเธเน€เธเธทเนเธญเธเธณเธฃเธฐเน€เธเธดเธ', color: '#ffffff', size: 'lg', weight: 'bold' },
+          { type: 'text', text: 'Scan to Pay', color: '#ffffff', size: 'lg', weight: 'bold' },
           { type: 'text', text: 'USDT Payment', color: '#888888', size: 'xs' }
         ]
       },
@@ -201,8 +162,8 @@ async function sendQRCode(replyToken, thb) {
           { type: 'text', text: 'Network: TRC-20 (TRON)', size: 'sm', weight: 'bold' },
           { type: 'text', text: WALLET_TRC20, size: 'xxs', color: '#555555', wrap: true },
           { type: 'separator' },
-          { type: 'text', text: 'โ ๏ธ TRC-20 เน€เธ—เนเธฒเธเธฑเนเธ โ€” เธเธดเธ” network = เน€เธชเธตเธขเน€เธเธดเธ', size: 'xs', color: '#ff5555', wrap: true },
-          { type: 'text', text: 'เธฃเธฐเธเธเธเธฐเนเธเนเธเน€เธกเธทเนเธญเนเธ”เนเธฃเธฑเธเน€เธเธดเธเนเธฅเนเธง', size: 'xs', color: '#888888', wrap: true }
+          { type: 'text', text: 'TRC-20 only โ€” wrong network = lost funds', size: 'xs', color: '#ff5555', wrap: true },
+          { type: 'text', text: 'You will be notified when payment is received', size: 'xs', color: '#888888', wrap: true }
         ]
       },
       footer: {
@@ -210,7 +171,7 @@ async function sendQRCode(replyToken, thb) {
         layout: 'vertical',
         contents: [{
           type: 'button',
-          action: { type: 'clipboard', label: 'เธเธฑเธ”เธฅเธญเธ Address', clipboardText: WALLET_TRC20 },
+          action: { type: 'clipboard', label: 'Copy Address', clipboardText: WALLET_TRC20 },
           style: 'primary',
           color: '#06C755'
         }]
