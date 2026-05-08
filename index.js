@@ -14,6 +14,9 @@ const client = new line.Client(config);
 const WALLET_TRC20 = process.env.WALLET_TRC20 || 'YOUR_TRC20_WALLET';
 const SPREAD = 0.03;
 
+// เน€เธเนเธ state เธเธญเธเธฅเธนเธเธเนเธฒเธ—เธตเนเธฃเธญเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธ
+const waitingForAmount = {};
+
 async function getRate() {
   try {
     const res = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB');
@@ -32,15 +35,37 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
     try {
       if (event.type === 'message' && event.message.text) {
         const text = event.message.text.toLowerCase();
-        if (text.includes('usdt_pay')) {
+        const userId = event.source.userId;
+
+        // เธ–เนเธฒเธฅเธนเธเธเนเธฒเธเธณเธฅเธฑเธเธฃเธญเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธ
+        if (waitingForAmount[userId]) {
+          const amount = parseFloat(event.message.text.replace(/,/g, ''));
+          if (!isNaN(amount) && amount >= 100) {
+            delete waitingForAmount[userId];
+            await sendQRCode(event.replyToken, amount);
+          } else {
+            await client.replyMessage(event.replyToken, {
+              type: 'text',
+              text: 'เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเธณเธเธงเธเน€เธเธดเธเน€เธเนเธเธ•เธฑเธงเน€เธฅเธ (เธเธฑเนเธเธ•เนเธณ 100 THB) เน€เธเนเธ 750'
+            });
+          }
+        } else if (text.includes('usdt_pay')) {
           await sendPaymentButton(event.replyToken);
         }
       } else if (event.type === 'postback') {
         const data = new URLSearchParams(event.postback.data);
         const action = data.get('action');
+        const userId = event.source.userId;
+
         if (action === 'select_amount') {
           const thb = parseInt(data.get('thb'));
           await sendQRCode(event.replyToken, thb);
+        } else if (action === 'custom_amount') {
+          waitingForAmount[userId] = true;
+          await client.replyMessage(event.replyToken, {
+            type: 'text',
+            text: 'เธเธดเธกเธเนเธเธณเธเธงเธเน€เธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃ (THB) เน€เธเนเธ 750\n\n(เธเธฑเนเธเธ•เนเธณ 100 THB)'
+          });
         }
       }
     } catch (err) {
@@ -55,7 +80,7 @@ async function sendPaymentButton(replyToken) {
 
   const message = {
     type: 'flex',
-    altText: 'เน€เธฅเธทเธญเธเธเธณเธเธงเธเน€เธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเธณเธฃเธฐ',
+    altText: 'Select payment amount',
     contents: {
       type: 'bubble',
       header: {
@@ -77,16 +102,29 @@ async function sendPaymentButton(replyToken) {
             type: 'box',
             layout: 'vertical',
             spacing: 'xs',
-            contents: presets.map(thb => ({
-              type: 'button',
-              action: {
-                type: 'postback',
-                label: `${thb.toLocaleString()} THB โ ${(thb / ourRate).toFixed(4)} USDT`,
-                data: `action=select_amount&thb=${thb}`
-              },
-              style: 'secondary',
-              height: 'sm'
-            }))
+            contents: [
+              ...presets.map(thb => ({
+                type: 'button',
+                action: {
+                  type: 'postback',
+                  label: `${thb.toLocaleString()} THB โ ${(thb / ourRate).toFixed(4)} USDT`,
+                  data: `action=select_amount&thb=${thb}`
+                },
+                style: 'secondary',
+                height: 'sm'
+              })),
+              {
+                type: 'button',
+                action: {
+                  type: 'postback',
+                  label: 'โ๏ธ Enter custom amount',
+                  data: 'action=custom_amount'
+                },
+                style: 'primary',
+                color: '#111111',
+                height: 'sm'
+              }
+            ]
           }
         ]
       }
