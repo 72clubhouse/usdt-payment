@@ -1,6 +1,7 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 
@@ -12,9 +13,8 @@ const config = {
 const client = new line.Client(config);
 
 const WALLET_TRC20 = process.env.WALLET_TRC20 || 'YOUR_TRC20_WALLET';
+const LIFF_ID = process.env.LIFF_ID || '2010018986-l6xlmcbu';
 const SPREAD = 0.03;
-
-const waitingForAmount = {};
 
 async function getRate() {
   try {
@@ -26,6 +26,15 @@ async function getRate() {
     return { mktRate: 33, ourRate: 33 * (1 - SPREAD) };
   }
 }
+
+app.get('/liff', function(req, res) {
+  res.sendFile(path.join(__dirname, 'liff.html'));
+});
+
+app.get('/rate', async function(req, res) {
+  const { ourRate } = await getRate();
+  res.json({ ourRate: ourRate, wallet: WALLET_TRC20 });
+});
 
 async function sendPaymentButton(replyToken) {
   const { ourRate } = await getRate();
@@ -74,9 +83,9 @@ async function sendPaymentButton(replyToken) {
           {
             type: 'button',
             action: {
-              type: 'postback',
+              type: 'uri',
               label: 'Enter custom amount',
-              data: 'action=custom_amount',
+              uri: 'https://liff.line.me/' + LIFF_ID,
             },
             style: 'primary',
             color: '#111111',
@@ -149,39 +158,16 @@ app.post('/webhook', line.middleware(config), async function(req, res) {
     const event = events[i];
     try {
       if (event.type === 'message' && event.message.text) {
-        const userId = event.source.userId;
-        const rawText = event.message.text.trim();
-        const text = rawText.toLowerCase();
-
-        if (waitingForAmount[userId]) {
-          const amount = parseFloat(rawText.replace(/,/g, ''));
-          if (!isNaN(amount) && amount >= 100) {
-            delete waitingForAmount[userId];
-            await sendQRCode(event.replyToken, amount);
-          } else {
-            await client.replyMessage(event.replyToken, {
-              type: 'text',
-              text: 'Please enter a valid number (min 100 THB) e.g. 750',
-            });
-          }
-        } else if (text.includes('usdt_pay')) {
+        const text = event.message.text.toLowerCase();
+        if (text.includes('usdt_pay')) {
           await sendPaymentButton(event.replyToken);
         }
-
       } else if (event.type === 'postback') {
-        const userId = event.source.userId;
         const data = new URLSearchParams(event.postback.data);
         const action = data.get('action');
-
         if (action === 'select_amount') {
           const thb = parseInt(data.get('thb'));
           await sendQRCode(event.replyToken, thb);
-        } else if (action === 'custom_amount') {
-          waitingForAmount[userId] = true;
-          await client.replyMessage(event.replyToken, {
-            type: 'text',
-            text: 'Enter the amount you want to pay (THB) e.g. 750\n\n(Min 100 THB)',
-          });
         }
       }
     } catch (err) {
