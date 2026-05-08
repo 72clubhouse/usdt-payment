@@ -137,29 +137,33 @@ async function sendPaymentButton(replyToken) {
             type: 'box',
             layout: 'vertical',
             spacing: 'xs',
-            contents: [
-              ...presets.map(thb => ({
-                type: 'button',
-                action: {
-                  type: 'postback',
-                  label: `${thb.toLocaleString()} เธฟ  โ  ${(thb / ourRate).toFixed(4)} USDT`,
-                  data: `action=select_amount&thb=${thb}`
-                },
-                style: 'secondary',
-                height: 'sm'
-              })),
-              {
-                type: 'button',
-                action: {
-                  type: 'postback',
-                  label: 'โ๏ธ เธฃเธฐเธเธธเธเธณเธเธงเธเน€เธญเธ',
-                  data: 'action=custom_amount'
-                },
-                style: 'primary',
-                color: '#111111',
-                height: 'sm'
-              }
-            ]
+            contents: presets.map(thb => ({
+              type: 'button',
+              action: {
+                type: 'postback',
+                label: `${thb.toLocaleString()} เธฟ  โ  ${(thb / ourRate).toFixed(4)} USDT`,
+                data: `action=select_amount&thb=${thb}`
+              },
+              style: 'secondary',
+              height: 'sm'
+            }))
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'postback',
+              label: 'โ๏ธ เธฃเธฐเธเธธเธเธณเธเธงเธเน€เธญเธ',
+              data: 'action=custom_amount'
+            },
+            style: 'primary',
+            color: '#111111',
+            height: 'sm'
           }
         ]
       }
