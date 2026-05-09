@@ -13,6 +13,10 @@ const config = {
 const client = new line.Client(config);
 
 const LIFF_ID = process.env.LIFF_ID || '2010018986-l6xlmcbu';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8688064558:AAH4VCduJ3Aiv9rNtUT6hWBPIeMokFI_6Nw';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1003705394096';
+const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY || 'bdd072e5-e851-4e9a-9711-b368d837d370';
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || '5HVEE97H4UZA5T842YUVUZSGU6QX2PJV2T';
 
 const NETWORKS = {
   trc20: {
@@ -38,21 +42,145 @@ const NETWORKS = {
   },
 };
 
+// เน€เธเนเธ tx hash เธ—เธตเนเนเธเนเธเน€เธ•เธทเธญเธเนเธเนเธฅเนเธง เนเธกเนเนเธซเนเนเธเนเธเธเนเธณ
+const notifiedTx = new Set();
+
 async function getRate() {
   try {
     const res = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB');
-    const mktRate = parseFloat(res.data.price);
-    return mktRate;
+    return parseFloat(res.data.price);
   } catch (e) {
     return 33;
   }
 }
 
-app.get('/liff', function(req, res) {
-  res.sendFile(path.join(__dirname, 'liff.html'));
-});
+async function sendTelegram(message) {
+  try {
+    await axios.post('https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage', {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message,
+      parse_mode: 'HTML',
+    });
+  } catch (e) {
+    console.error('Telegram error:', e.message);
+  }
+}
 
-app.get('/rate', async function(req, res) {
+// เน€เธเนเธ TRC-20 (TRON)
+async function checkTRC20() {
+  try {
+    const wallet = NETWORKS.trc20.wallet;
+    const res = await axios.get('https://api.trongrid.io/v1/accounts/' + wallet + '/transactions/trc20', {
+      headers: { 'TRON-PRO-API-KEY': TRONGRID_API_KEY },
+      params: { limit: 10, contract_address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' }
+    });
+    const txs = res.data.data || [];
+    for (const tx of txs) {
+      if (tx.to === wallet && !notifiedTx.has(tx.transaction_id)) {
+        notifiedTx.add(tx.transaction_id);
+        const amount = (parseInt(tx.value) / 1e6).toFixed(2);
+        const mktRate = await getRate();
+        const thb = (parseFloat(amount) * mktRate).toFixed(2);
+        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ TRC-20!</b>\n\n' +
+          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+          '๐”— Network: TRC-20 (TRON)\n' +
+          '๐“ TX: ' + tx.transaction_id.substring(0, 20) + '...';
+        await sendTelegram(msg);
+      }
+    }
+  } catch (e) {
+    console.error('TRC20 check error:', e.message);
+  }
+}
+
+// เน€เธเนเธ BEP-20 (BSC)
+async function checkBEP20() {
+  try {
+    const wallet = NETWORKS.bep20.wallet;
+    const res = await axios.get('https://api.bscscan.com/api', {
+      params: {
+        module: 'account',
+        action: 'tokentx',
+        address: wallet,
+        contractaddress: '0x55d398326f99059fF775485246999027B3197955',
+        page: 1,
+        offset: 10,
+        sort: 'desc',
+        apikey: ETHERSCAN_API_KEY,
+      }
+    });
+    const txs = res.data.result || [];
+    for (const tx of txs) {
+      if (tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
+        notifiedTx.add(tx.hash);
+        const amount = (parseInt(tx.value) / 1e18).toFixed(2);
+        const mktRate = await getRate();
+        const thb = (parseFloat(amount) * mktRate).toFixed(2);
+        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ BEP-20!</b>\n\n' +
+          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+          '๐”— Network: BEP-20 (BSC)\n' +
+          '๐“ TX: ' + tx.hash.substring(0, 20) + '...';
+        await sendTelegram(msg);
+      }
+    }
+  } catch (e) {
+    console.error('BEP20 check error:', e.message);
+  }
+}
+
+// เน€เธเนเธ Polygon
+async function checkPolygon() {
+  try {
+    const wallet = NETWORKS.polygon.wallet;
+    const res = await axios.get('https://api.polygonscan.com/api', {
+      params: {
+        module: 'account',
+        action: 'tokentx',
+        address: wallet,
+        contractaddress: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+        page: 1,
+        offset: 10,
+        sort: 'desc',
+        apikey: ETHERSCAN_API_KEY,
+      }
+    });
+    const txs = res.data.result || [];
+    for (const tx of txs) {
+      if (tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
+        notifiedTx.add(tx.hash);
+        const amount = (parseInt(tx.value) / 1e6).toFixed(2);
+        const mktRate = await getRate();
+        const thb = (parseFloat(amount) * mktRate).toFixed(2);
+        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ Polygon!</b>\n\n' +
+          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+          '๐”— Network: Polygon\n' +
+          '๐“ TX: ' + tx.hash.substring(0, 20) + '...';
+        await sendTelegram(msg);
+      }
+    }
+  } catch (e) {
+    console.error('Polygon check error:', e.message);
+  }
+}
+
+// เน€เธเนเธเธ—เธธเธ 60 เธงเธดเธเธฒเธ—เธต
+setInterval(function() {
+  checkTRC20();
+  checkBEP20();
+  checkPolygon();
+}, 60 * 1000);
+
+// เน€เธเนเธเธเธฃเธฑเนเธเนเธฃเธเธ•เธญเธ start
+setTimeout(function() {
+  checkTRC20();
+  checkBEP20();
+  checkPolygon();
+}, 5000);
+
+async function getNetworkRates() {
   const mktRate = await getRate();
   const rates = {};
   for (const key in NETWORKS) {
@@ -66,14 +194,22 @@ app.get('/rate', async function(req, res) {
       warning: net.warning,
     };
   }
-  res.json({ mktRate, rates });
+  return { mktRate, rates };
+}
+
+app.get('/liff', function(req, res) {
+  res.sendFile(path.join(__dirname, 'liff.html'));
+});
+
+app.get('/rate', async function(req, res) {
+  const data = await getNetworkRates();
+  res.json(data);
 });
 
 async function sendPaymentButton(replyToken) {
   const mktRate = await getRate();
   const presets = [100, 200, 500, 1000, 2000, 5000];
-
-  const bestRate = mktRate * (1 - 0.03);
+  const bestRate = mktRate * 0.97;
 
   const buttons = presets.map(function(thb) {
     return {
@@ -99,7 +235,7 @@ async function sendPaymentButton(replyToken) {
         backgroundColor: '#06C755',
         contents: [
           { type: 'text', text: 'USDT Payment', color: '#ffffff', size: 'xl', weight: 'bold' },
-          { type: 'text', text: 'TRC-20, BEP-20, Polygon: 3% spread', color: '#ddffdd', size: 'xs' },
+          { type: 'text', text: 'Rate: 1 USDT = ' + mktRate.toFixed(2) + ' THB (spread 3%)', color: '#ddffdd', size: 'xs' },
         ],
       },
       body: {
