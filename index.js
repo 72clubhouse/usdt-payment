@@ -431,77 +431,14 @@ async function sendTG(chatId, text, keyboard) {
 }
 
 async function handleTGUpdate(update) {
+  // เนเธกเนเธ•เธญเธเธเนเธญเธเธงเธฒเธกเธเธฒเธ Group เธซเธฃเธทเธญ Channel
   if (update.message) {
-    const chatId = update.message.chat.id;
-    const text = update.message.text || '';
-    if (text === '/start') {
-      const welcome =
-        '๐ <b>เธขเธดเธเธ”เธตเธ•เนเธญเธเธฃเธฑเธเธชเธนเน 72Clubhouse!</b>\n' +
-        'Welcome to 72Clubhouse! ๐น๐ญ\n\n' +
-        '๐ฐ เน€เธฃเธฒเธเธทเธญ Poker Club เธเธฑเนเธเธเธณเธ—เธตเนเธฃเธงเธกเธเธฑเธเนเธเนเธกเธทเธญเธญเธฒเธเธตเธ\n' +
-        'We are a premier Poker Club for professional players.\n\n' +
-        '๐‘ เน€เธฅเธทเธญเธเธชเธดเนเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃ / Select an option:';
-      await sendTG(chatId, welcome, [
-        [{ text: '๐ฎ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ / Register', callback_data: 'register' }],
-        [{ text: '๐“– เธงเธดเธเธตเน€เธเนเธฒ Club / How to Join', callback_data: 'howto' }],
-        [{ text: '๐’ฌ เธ•เธดเธ”เธ•เนเธญเนเธญเธ”เธกเธดเธ / Contact Admin', callback_data: 'contact' }],
-      ]);
-    } else {
-      await sendTG(chatId, 'เธเธดเธกเธเน /start เน€เธเธทเนเธญเน€เธฃเธดเนเธกเธ•เนเธ\nType /start to begin ๐', null);
-    }
+    const chatType = update.message.chat.type;
+    if (chatType === 'group' || chatType === 'supergroup' || chatType === 'channel') return;
   }
-
   if (update.callback_query) {
-    const chatId = update.callback_query.message.chat.id;
-    const data = update.callback_query.data;
-    await axios.post(TG_API + '/answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(function(){});
-
-    if (data === 'register') {
-      const userId = update.callback_query.from.id;
-      registerState[userId] = { step: 'name' };
-      await sendTG(chatId, '๐“ <b>เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ 72Clubhouse</b>\n\nเธเธฃเธญเธ <b>เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ</b> เธเธญเธเธเธธเธ“:', null);
-
-    } else if (data === 'join' || data === 'howto') {
-      const msg =
-        '๐“ฑ <b>เธงเธดเธเธตเน€เธเนเธฒ Club / How to Join</b>\n\n' +
-        '1๏ธโฃ เธ”เธฒเธงเธเนเนเธซเธฅเธ” Club GG / Download Club GG\n\n' +
-        '๐ iOS: https://apps.apple.com/us/app/clubgg-poker/id1529839330\n' +
-        '๐ค– Android: https://play.google.com/store/apps/details?id=com.nsus.clubgg\n' +
-        '๐’ป PC/Mac: https://www.clubgg.com\n\n' +
-        '2๏ธโฃ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเนเธเนเธญเธ / Register in app\n\n' +
-        '3๏ธโฃ เธเนเธเธซเธฒ Club ID: <b>' + CLUB_ID + '</b>\n' +
-        '    Search Club ID: <b>' + CLUB_ID + '</b>\n\n' +
-        '4๏ธโฃ เธเธ” Join โ’ เธฃเธญเนเธญเธ”เธกเธดเธ Approve\n' +
-        '    Click Join โ’ Wait for Admin Approval\n\n' +
-        'โ… เธเธเธเธฑเธเนเธ Club เธเธฃเธฑเธ ๐\n' +
-        'See you in the Club! ๐';
-      await sendTG(chatId, msg, [
-        [{ text: '๐’ฌ เธ•เธดเธ”เธ•เนเธญเนเธญเธ”เธกเธดเธ / Contact Admin', callback_data: 'contact' }],
-        [{ text: '๐” เธเธฅเธฑเธ / Back', callback_data: 'back' }],
-      ]);
-
-    } else if (data === 'contact') {
-      const msg =
-        '๐’ฌ <b>เธ•เธดเธ”เธ•เนเธญเนเธญเธ”เธกเธดเธ / Contact Admin</b>\n\n' +
-        '๐‘ค Admin: ' + ADMIN_USERNAME + '\n\n' +
-        'โฐ เธเธฃเนเธญเธกเนเธซเนเธเธฃเธดเธเธฒเธฃเธ—เธธเธเธงเธฑเธ / Available every day\n\n' +
-        '๐“ฉ เธเธ”เธเธธเนเธกเธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเธ•เธดเธ”เธ•เนเธญเนเธญเธ”เธกเธดเธ\n' +
-        'Click below to contact admin directly!';
-      await sendTG(chatId, msg, [
-        [{ text: '๐‘ค เนเธเธ—เธเธฑเธเนเธญเธ”เธกเธดเธ / Chat with Admin', url: 'https://t.me/clubhouse72' }],
-        [{ text: '๐” เธเธฅเธฑเธ / Back', callback_data: 'back' }],
-      ]);
-
-    } else if (data === 'back') {
-      const welcome =
-        '๐ <b>72Clubhouse</b>\n\n' +
-        '๐‘ เน€เธฅเธทเธญเธเธชเธดเนเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃ / Select an option:';
-      await sendTG(chatId, welcome, [
-        [{ text: '๐ฎ เธชเธกเธฑเธเธฃเน€เธเนเธฒ Club / Join Club', callback_data: 'join' }],
-        [{ text: '๐“– เธงเธดเธเธตเน€เธเนเธฒ Club / How to Join', callback_data: 'howto' }],
-        [{ text: '๐’ฌ เธ•เธดเธ”เธ•เนเธญเนเธญเธ”เธกเธดเธ / Contact Admin', callback_data: 'contact' }],
-      ]);
-    }
+    const chatType = update.callback_query.message.chat.type;
+    if (chatType === 'group' || chatType === 'supergroup' || chatType === 'channel') return;
   }
 }
 
