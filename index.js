@@ -42,7 +42,7 @@ const NETWORKS = {
   },
 };
 
-// เน€เธเนเธ tx hash เธ—เธตเนเนเธเนเธเน€เธ•เธทเธญเธเนเธเนเธฅเนเธง เนเธกเนเนเธซเนเนเธเนเธเธเนเธณ
+// Store notified tx hashes to prevent duplicates
 const notifiedTx = new Set();
 
 async function getRate() {
@@ -66,7 +66,7 @@ async function sendTelegram(message) {
   }
 }
 
-// เน€เธเนเธ TRC-20 (TRON)
+// Check TRC-20 (TRON)
 async function checkTRC20() {
   try {
     const wallet = NETWORKS.trc20.wallet;
@@ -81,9 +81,9 @@ async function checkTRC20() {
         const amount = (parseInt(tx.value) / 1e6).toFixed(2);
         const mktRate = await getRate();
         const thb = (parseFloat(amount) * mktRate).toFixed(2);
-        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ TRC-20!</b>\n\n' +
-          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
-          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+        const msg = '๐’ฐ <b>Payment Received - TRC-20!</b>\n\n' +
+          '๐’ต Amount: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ Approx: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
           '๐”— Network: TRC-20 (TRON)\n' +
           '๐“ TX: ' + tx.transaction_id.substring(0, 20) + '...';
         await sendTelegram(msg);
@@ -94,7 +94,7 @@ async function checkTRC20() {
   }
 }
 
-// เน€เธเนเธ BEP-20 (BSC)
+// Check BEP-20 (BSC)
 async function checkBEP20() {
   try {
     const wallet = NETWORKS.bep20.wallet;
@@ -117,9 +117,9 @@ async function checkBEP20() {
         const amount = (parseInt(tx.value) / 1e18).toFixed(2);
         const mktRate = await getRate();
         const thb = (parseFloat(amount) * mktRate).toFixed(2);
-        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ BEP-20!</b>\n\n' +
-          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
-          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+        const msg = '๐’ฐ <b>Payment Received - BEP-20!</b>\n\n' +
+          '๐’ต Amount: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ Approx: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
           '๐”— Network: BEP-20 (BSC)\n' +
           '๐“ TX: ' + tx.hash.substring(0, 20) + '...';
         await sendTelegram(msg);
@@ -130,7 +130,7 @@ async function checkBEP20() {
   }
 }
 
-// เน€เธเนเธ Polygon
+// Check Polygon
 async function checkPolygon() {
   try {
     const wallet = NETWORKS.polygon.wallet;
@@ -153,9 +153,9 @@ async function checkPolygon() {
         const amount = (parseInt(tx.value) / 1e6).toFixed(2);
         const mktRate = await getRate();
         const thb = (parseFloat(amount) * mktRate).toFixed(2);
-        const msg = '๐’ฐ <b>เน€เธเธดเธเน€เธเนเธฒ Polygon!</b>\n\n' +
-          '๐’ต เธเธณเธเธงเธ: <b>' + amount + ' USDT</b>\n' +
-          '๐น๐ญ เธเธฃเธฐเธกเธฒเธ“: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
+        const msg = '๐’ฐ <b>Payment Received - Polygon!</b>\n\n' +
+          '๐’ต Amount: <b>' + amount + ' USDT</b>\n' +
+          '๐น๐ญ Approx: <b>' + parseFloat(thb).toLocaleString() + ' THB</b>\n' +
           '๐”— Network: Polygon\n' +
           '๐“ TX: ' + tx.hash.substring(0, 20) + '...';
         await sendTelegram(msg);
@@ -166,14 +166,14 @@ async function checkPolygon() {
   }
 }
 
-// เน€เธเนเธเธ—เธธเธ 60 เธงเธดเธเธฒเธ—เธต
+// Check every 60 seconds
 setInterval(function() {
   checkTRC20();
   checkBEP20();
   checkPolygon();
 }, 60 * 1000);
 
-// เน€เธเนเธเธเธฃเธฑเนเธเนเธฃเธเธ•เธญเธ start
+// First check on start
 setTimeout(function() {
   checkTRC20();
   checkBEP20();
@@ -431,7 +431,7 @@ async function sendTG(chatId, text, keyboard) {
 }
 
 async function handleTGUpdate(update) {
-  // เนเธกเนเธ•เธญเธเธเนเธญเธเธงเธฒเธกเธเธฒเธ Group เธซเธฃเธทเธญ Channel
+  // Ignore messages from Group or Channel
   if (update.message) {
     const chatType = update.message.chat.type;
     if (chatType === 'group' || chatType === 'supergroup' || chatType === 'channel') return;
@@ -465,7 +465,7 @@ setTimeout(pollTG, 3000);
 // ===== REGISTER BOT =====
 const REGISTER_BOT_TOKEN = process.env.REGISTER_BOT_TOKEN || '8704643171:AAG2nd5umGh6bl0S7cT6ekBz3q-FplJXCmg';
 const REGISTER_API = 'https://api.telegram.org/bot' + REGISTER_BOT_TOKEN;
-let regOffset = -1;
+let regOffset = 0;
 const regState = {};
 
 async function sendReg(chatId, text, keyboard) {
@@ -474,39 +474,49 @@ async function sendReg(chatId, text, keyboard) {
   try { await axios.post(REGISTER_API + '/sendMessage', payload); } catch(e) {}
 }
 
-async function saveToSheet(data) {
-  try {
-    await axios.post(SHEET_URL, data, { headers: { 'Content-Type': 'application/json' } });
-  } catch(e) { console.error('Sheet error:', e.message); }
-}
-
 async function handleRegUpdate(update) {
   if (update.message) {
     const chatId = update.message.chat.id;
     const userId = update.message.from.id;
     const text = update.message.text || '';
+    const chatType = update.message.chat.type;
+    if (chatType !== 'private') return;
 
     if (regState[userId]) {
       const state = regState[userId];
+
       if (state.step === 'name') {
-        state.name = text; state.step = 'phone';
-        await sendReg(chatId, '๐“ Step 2/5: Please enter your <b>Phone Number</b>:', null);
+        state.name = text;
+        state.step = 'phone';
+        await sendReg(chatId, 'Step 2/5\n\nPlease enter your <b>Phone Number</b>:', null);
+
       } else if (state.step === 'phone') {
-        state.phone = text; state.step = 'bank';
-        await sendReg(chatId, '๐ฆ Step 3/5: Please enter your <b>Bank / Account Number</b>:\nExample: Kasikorn 123-4-56789-0', null);
+        state.phone = text;
+        state.step = 'bank';
+        await sendReg(chatId, 'Step 3/5\n\nPlease enter your <b>Bank Name and Account Number</b>:\nExample: Kasikorn 123-4-56789-0', null);
+
       } else if (state.step === 'bank') {
-        state.bank = text; state.step = 'clubgg';
-        await sendReg(chatId, '๐ฎ Step 4/5: Please enter your <b>Club GG ID</b>:', null);
+        state.bank = text;
+        state.step = 'clubgg';
+        await sendReg(chatId, 'Step 4/5\n\nPlease enter your <b>Club GG ID</b>:', null);
+
       } else if (state.step === 'clubgg') {
-        state.clubgg_id = text; state.step = 'wallet';
-        await sendReg(chatId, '๐’ฐ Step 5/5: Please enter your <b>Crypto Wallet Address</b>:\n(TRC-20, BEP-20 or Polygon)', null);
+        state.clubgg_id = text;
+        state.step = 'wallet';
+        await sendReg(chatId, 'Step 5/5\n\nPlease enter your <b>Crypto Wallet Address</b>:\n(TRC-20, BEP-20 or Polygon)', null);
+
       } else if (state.step === 'wallet') {
         state.wallet = text;
+
         await saveToSheet({
-          name: state.name, phone: state.phone, bank: state.bank,
-          clubgg_id: state.clubgg_id, wallet: state.wallet,
+          name: state.name,
+          phone: state.phone,
+          bank: state.bank,
+          clubgg_id: state.clubgg_id,
+          wallet: state.wallet,
           telegram_id: '@' + (update.message.from.username || userId),
         });
+
         const adminMsg =
           '๐• <b>New Member!</b>\n\n' +
           '๐‘ค Name: ' + state.name + '\n' +
@@ -516,10 +526,12 @@ async function handleRegUpdate(update) {
           '๐’ฐ Wallet: ' + state.wallet + '\n' +
           '๐“ฑ Telegram: @' + (update.message.from.username || userId);
         await sendTelegram(adminMsg);
+
         delete regState[userId];
+
         await sendReg(chatId,
-          'โ… <b>Registration Complete!</b>\n\nOur admin will contact you shortly. ๐\n\n๐‘ค @clubhouse72',
-          [[{ text: '๐” Back', callback_data: 'reg_back' }]]
+          'โ… <b>Registration Complete!</b>\n\nOur admin will contact you shortly.\n\n๐‘ค @clubhouse72',
+          [[{ text: 'Back to Start', callback_data: 'reg_back' }]]
         );
       }
       return;
@@ -527,8 +539,8 @@ async function handleRegUpdate(update) {
 
     if (text === '/start') {
       await sendReg(chatId,
-        'Welcome to 72Clubhouse! ๐\n\nPlease click the button below to register:',
-        [[{ text: '๐“ Register / เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ', callback_data: 'reg_start' }]]
+        '๐ <b>Welcome to 72Clubhouse!</b>\n\nClick the button below to register your information:',
+        [[{ text: 'Register Now', callback_data: 'reg_start' }]]
       );
     }
   }
@@ -541,11 +553,12 @@ async function handleRegUpdate(update) {
 
     if (data === 'reg_start') {
       regState[userId] = { step: 'name' };
-      await sendReg(chatId, '๐“ <b>Register - 72Clubhouse</b>\n\nStep 1/5: Please enter your <b>Full Name</b>:', null);
+      await sendReg(chatId, 'Step 1/5\n\nPlease enter your <b>Full Name</b>:', null);
+
     } else if (data === 'reg_back') {
       await sendReg(chatId,
-        'Welcome to 72Clubhouse! ๐\n\nClick below to register:',
-        [[{ text: '๐“ Register / เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ', callback_data: 'reg_start' }]]
+        '๐ <b>Welcome to 72Clubhouse!</b>\n\nClick the button below to register:',
+        [[{ text: 'Register Now', callback_data: 'reg_start' }]]
       );
     }
   }
@@ -554,10 +567,14 @@ async function handleRegUpdate(update) {
 async function pollReg() {
   try {
     const res = await axios.get(REGISTER_API + '/getUpdates', {
-      params: { offset: regOffset, timeout: 30 }, timeout: 35000,
+      params: { offset: regOffset, timeout: 30 },
+      timeout: 35000,
     });
     const updates = res.data.result || [];
-    for (const u of updates) { regOffset = u.update_id + 1; await handleRegUpdate(u); }
+    for (var i = 0; i < updates.length; i++) {
+      regOffset = updates[i].update_id + 1;
+      await handleRegUpdate(updates[i]);
+    }
   } catch(e) { console.error('Reg poll error:', e.message); }
   setTimeout(pollReg, 1000);
 }
