@@ -110,9 +110,9 @@ async function checkBEP20() {
         apikey: ETHERSCAN_API_KEY,
       }
     });
-    const txs = res.data.result || [];
+    const txs = Array.isArray(res.data.result) ? res.data.result : [];
     for (const tx of txs) {
-      if (tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
+      if (tx && tx.to && tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
         notifiedTx.add(tx.hash);
         const amount = (parseInt(tx.value) / 1e18).toFixed(2);
         const mktRate = await getRate();
@@ -146,9 +146,9 @@ async function checkPolygon() {
         apikey: ETHERSCAN_API_KEY,
       }
     });
-    const txs = res.data.result || [];
+    const txs = Array.isArray(res.data.result) ? res.data.result : [];
     for (const tx of txs) {
-      if (tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
+      if (tx && tx.to && tx.to.toLowerCase() === wallet.toLowerCase() && !notifiedTx.has(tx.hash)) {
         notifiedTx.add(tx.hash);
         const amount = (parseInt(tx.value) / 1e6).toFixed(2);
         const mktRate = await getRate();
