@@ -465,7 +465,7 @@ setTimeout(pollTG, 3000);
 // ===== REGISTER BOT =====
 const REGISTER_BOT_TOKEN = process.env.REGISTER_BOT_TOKEN || '8704643171:AAG2nd5umGh6bl0S7cT6ekBz3q-FplJXCmg';
 const REGISTER_API = 'https://api.telegram.org/bot' + REGISTER_BOT_TOKEN;
-let regOffset = 0;
+let regOffset = -1;
 const regState = {};
 
 async function sendReg(chatId, text, keyboard) {
@@ -509,9 +509,9 @@ async function handleRegUpdate(update) {
         });
         const adminMsg =
           '๐• <b>New Member!</b>\n\n' +
-          '๐‘ค เธเธทเนเธญ: ' + state.name + '\n' +
-          '๐“ เน€เธเธญเธฃเน: ' + state.phone + '\n' +
-          '๐ฆ เธเธฑเธเธเธต: ' + state.bank + '\n' +
+          '๐‘ค Name: ' + state.name + '\n' +
+          '๐“ Phone: ' + state.phone + '\n' +
+          '๐ฆ Bank: ' + state.bank + '\n' +
           '๐ฎ Club GG ID: ' + state.clubgg_id + '\n' +
           '๐’ฐ Wallet: ' + state.wallet + '\n' +
           '๐“ฑ Telegram: @' + (update.message.from.username || userId);
@@ -519,7 +519,7 @@ async function handleRegUpdate(update) {
         delete regState[userId];
         await sendReg(chatId,
           'โ… <b>Registration Complete!</b>\n\nOur admin will contact you shortly. ๐\n\n๐‘ค @clubhouse72',
-          [[{ text: '๐” เธเธฅเธฑเธเธซเธเนเธฒเธซเธฅเธฑเธ', callback_data: 'reg_back' }]]
+          [[{ text: '๐” Back', callback_data: 'reg_back' }]]
         );
       }
       return;
