@@ -490,16 +490,16 @@ async function handleRegUpdate(update) {
       const state = regState[userId];
       if (state.step === 'name') {
         state.name = text; state.step = 'phone';
-        await sendReg(chatId, '๐“ เธเธฃเธญเธ <b>เน€เธเธญเธฃเนเนเธ—เธฃเธจเธฑเธเธ—เน</b> เธเธญเธเธเธธเธ“:', null);
+        await sendReg(chatId, '๐“ Step 2/5: Please enter your <b>Phone Number</b>:', null);
       } else if (state.step === 'phone') {
         state.phone = text; state.step = 'bank';
-        await sendReg(chatId, '๐ฆ เธเธฃเธญเธ <b>เธเธเธฒเธเธฒเธฃ/เน€เธฅเธเธเธฑเธเธเธต</b> เธเธญเธเธเธธเธ“:\nเน€เธเนเธ เธเธชเธดเธเธฃ 123-4-56789-0', null);
+        await sendReg(chatId, '๐ฆ Step 3/5: Please enter your <b>Bank / Account Number</b>:\nExample: Kasikorn 123-4-56789-0', null);
       } else if (state.step === 'bank') {
         state.bank = text; state.step = 'clubgg';
-        await sendReg(chatId, '๐ฎ เธเธฃเธญเธ <b>ID Club GG</b> เธเธญเธเธเธธเธ“:', null);
+        await sendReg(chatId, '๐ฎ Step 4/5: Please enter your <b>Club GG ID</b>:', null);
       } else if (state.step === 'clubgg') {
         state.clubgg_id = text; state.step = 'wallet';
-        await sendReg(chatId, '๐’ฐ เธเธฃเธญเธ <b>Wallet Address</b> เธเธฃเธดเธเนเธ•เธเธญเธเธเธธเธ“:', null);
+        await sendReg(chatId, '๐’ฐ Step 5/5: Please enter your <b>Crypto Wallet Address</b>:\n(TRC-20, BEP-20 or Polygon)', null);
       } else if (state.step === 'wallet') {
         state.wallet = text;
         await saveToSheet({
@@ -508,7 +508,7 @@ async function handleRegUpdate(update) {
           telegram_id: '@' + (update.message.from.username || userId),
         });
         const adminMsg =
-          '๐• <b>เธชเธกเธฒเธเธดเธเนเธซเธกเน!</b>\n\n' +
+          '๐• <b>New Member!</b>\n\n' +
           '๐‘ค เธเธทเนเธญ: ' + state.name + '\n' +
           '๐“ เน€เธเธญเธฃเน: ' + state.phone + '\n' +
           '๐ฆ เธเธฑเธเธเธต: ' + state.bank + '\n' +
@@ -518,7 +518,7 @@ async function handleRegUpdate(update) {
         await sendTelegram(adminMsg);
         delete regState[userId];
         await sendReg(chatId,
-          'โ… <b>เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเธชเธณเน€เธฃเนเธเนเธฅเนเธงเธเธฃเธฑเธ!</b>\n\nเนเธญเธ”เธกเธดเธเธเธฐเธ•เธดเธ”เธ•เนเธญเธเธฅเธฑเธเน€เธฃเนเธงเน เธเธตเนเธเธฃเธฑเธ ๐\n\n๐‘ค @clubhouse72',
+          'โ… <b>Registration Complete!</b>\n\nOur admin will contact you shortly. ๐\n\n๐‘ค @clubhouse72',
           [[{ text: '๐” เธเธฅเธฑเธเธซเธเนเธฒเธซเธฅเธฑเธ', callback_data: 'reg_back' }]]
         );
       }
@@ -527,8 +527,8 @@ async function handleRegUpdate(update) {
 
     if (text === '/start') {
       await sendReg(chatId,
-        '๐ <b>เธขเธดเธเธ”เธตเธ•เนเธญเธเธฃเธฑเธเธชเธนเน 72Clubhouse!</b>\nWelcome! ๐น๐ญ\n\n๐“ เธเธ”เธเธธเนเธกเธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธเนเธ”เนเน€เธฅเธขเธเธฃเธฑเธ:',
-        [[{ text: '๐“ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ / Register', callback_data: 'reg_start' }]]
+        'Welcome to 72Clubhouse! ๐\n\nPlease click the button below to register:',
+        [[{ text: '๐“ Register / เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ', callback_data: 'reg_start' }]]
       );
     }
   }
@@ -541,11 +541,11 @@ async function handleRegUpdate(update) {
 
     if (data === 'reg_start') {
       regState[userId] = { step: 'name' };
-      await sendReg(chatId, '๐“ <b>เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ 72Clubhouse</b>\n\nเธเธฃเธญเธ <b>เธเธทเนเธญ-เธเธฒเธกเธชเธเธธเธฅ</b> เธเธญเธเธเธธเธ“:', null);
+      await sendReg(chatId, '๐“ <b>Register - 72Clubhouse</b>\n\nStep 1/5: Please enter your <b>Full Name</b>:', null);
     } else if (data === 'reg_back') {
       await sendReg(chatId,
-        '๐ <b>72Clubhouse</b>\n\n๐“ เธเธ”เธเธธเนเธกเธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ:',
-        [[{ text: '๐“ เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ / Register', callback_data: 'reg_start' }]]
+        'Welcome to 72Clubhouse! ๐\n\nClick below to register:',
+        [[{ text: '๐“ Register / เธชเธกเธฑเธเธฃเธชเธกเธฒเธเธดเธ', callback_data: 'reg_start' }]]
       );
     }
   }
